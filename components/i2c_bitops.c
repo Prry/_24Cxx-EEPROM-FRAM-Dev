@@ -7,7 +7,8 @@
  * Change Logs:
  * Date           Author       Notes
  * 2016-06-10     Acuity      first version.
- * 2017-02-20     Acuity			add i2c_bus device.
+ * 2017-02-20     Acuity	  add i2c_bus device.
+ * 2018-10-22     Acuity	  add the speed.
  */
 #include "i2c_bitops.h"
 
@@ -81,13 +82,20 @@ static void i2c_bitops_not_ack(struct ops_i2c_dev *i2c_bus)
 static int i2c_bitops_send_byte(struct ops_i2c_dev *i2c_bus,unsigned char data)
 {                        
     signed char i; 
-     
+    uint16_t temp = 0x00; 
+	
+	if(i2c_bus->speed == 0 || i2c_bus->speed > 400)
+		temp = 2;	/*default 200k*/
+	temp = 1000 / ((i2c_bus->speed) << 1);	/*2 delay*/
+	if(temp == 0)
+		temp = 2;
     for(i=7;i >= 0;i--)
     {        
 		i2c_bus->set_scl(0);
 		i2c_bus->set_sda((data >> i) & 0x01);
-		i2c_bus->delayus(5);
+		i2c_bus->delayus(temp);
 		i2c_bus->set_scl(1);
+		i2c_bus->delayus(temp);
     }	
 	i2c_bus->set_scl(0);
 	i2c_bus->delayus(3);
@@ -98,19 +106,25 @@ static int i2c_bitops_send_byte(struct ops_i2c_dev *i2c_bus,unsigned char data)
 static signed char i2c_bitops_recv_byte(struct ops_i2c_dev *i2c_bus)
 {
 	signed char i,receive=0;
+	uint16_t temp = 0x00; 
 	
+	if(i2c_bus->speed == 0 || i2c_bus->speed > 400)
+		temp = 2;	/*default 200k*/
+	temp = 1000 / ((i2c_bus->speed) << 1);	/*2 delay*/
+	if(temp == 0)
+		temp = 2;
 	i2c_bus->set_scl(0);
 	i2c_bus->set_sda(1);
-	i2c_bus->delayus(3);
+	//i2c_bus->delayus(3);
     for(i = 0;i < 8;i++ )
 	{
 		receive <<= 1;
 		i2c_bus->set_scl(1);
-		i2c_bus->delayus(3);    
+		i2c_bus->delayus(temp);    
       	if(i2c_bus->get_sda())
 			receive |= 0x01; 
 		i2c_bus->set_scl(0);
-		i2c_bus->delayus(5); 
+		i2c_bus->delayus(temp); 
     }					 
 
     return receive;
@@ -149,14 +163,14 @@ static int i2c_bitops_send_address(struct ops_i2c_dev *i2c_bus,struct i2c_dev_me
         addr2 = msg->addr & 0xff;
 
         //ret = i2c_bitops_send_byte(addr1);
-				ret = i2c_send_address(i2c_bus,addr1,msg->retries);
+		ret = i2c_send_address(i2c_bus,addr1,msg->retries);
         if ((ret != 0) && !ignore_nack)
         {
             return -1;
         }
 
         //ret = i2c_bitops_send_byte(addr2);
-				ret = i2c_send_address(i2c_bus,addr2,msg->retries);
+		ret = i2c_send_address(i2c_bus,addr2,msg->retries);
         if ((ret != 0) && !ignore_nack)
         {
             return -1;
@@ -166,7 +180,7 @@ static int i2c_bitops_send_address(struct ops_i2c_dev *i2c_bus,struct i2c_dev_me
             i2c_bitops_start(i2c_bus);
             addr1 |= 0x01;
             //ret = i2c_bitops_send_byte(addr1);
-						ret = i2c_send_address(i2c_bus,addr1,msg->retries);
+			ret = i2c_send_address(i2c_bus,addr1,msg->retries);
             if ((ret != 0) && !ignore_nack)
             {
                 return -1;

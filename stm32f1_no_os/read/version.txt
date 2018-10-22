@@ -6,3 +6,4 @@ code version
 
 Date      		Author      	Version				Notes
 2018-09-01  	Acuity				1.00				first version.
+2018-10-22  	Acuity				1.00				模拟i2c增加读写速度参数.

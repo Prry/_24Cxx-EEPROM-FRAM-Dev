@@ -70,10 +70,10 @@ void stm32f1xx_i2c_init(void)
     GPIO_InitTypeDef GPIO_InitStructure;										
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);		
 
-    GPIO_InitStructure.GPIO_Pin = I2C1_SDA_PIN | I2C1_SCL_PIN;//配置IIC端口
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;//开漏输出
+    GPIO_InitStructure.GPIO_Pin = I2C1_SDA_PIN | I2C1_SCL_PIN; 
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD; 
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	   		
-    GPIO_Init(I2C1_SDA_PORT, &GPIO_InitStructure);//SDA和SCL同一端口组(GPIOB)			   				
+    GPIO_Init(I2C1_SDA_PORT, &GPIO_InitStructure); 		   				
     I2C1_SDA_PORT->BSRR = I2C1_SDA_PIN;												//空闲拉高总线
     I2C1_SCL_PORT->BSRR = I2C1_SCL_PIN;
 	
@@ -83,7 +83,8 @@ void stm32f1xx_i2c_init(void)
     ops_i2c1_dev.set_scl = gpio_set_scl;
     ops_i2c1_dev.get_scl = gpio_get_scl;
     ops_i2c1_dev.delayus = gpio_delayus;
-		
+	ops_i2c1_dev.speed   = 400;				/*speed,max*/
+	
     i2c1_dev.i2c_phy 	= &ops_i2c1_dev;
     i2c1_dev.xfer 		= ops_i2c_bus_xfer; 
 }

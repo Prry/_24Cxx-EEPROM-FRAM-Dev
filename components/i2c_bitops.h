@@ -11,6 +11,7 @@ struct ops_i2c_dev
     int8_t (*get_sda)(void);
     int8_t (*get_scl)(void);
     void (*delayus)(uint32_t us);
+	uint16_t	speed;	/*Kbit*/
 };
 
 extern int i2c_bitops_bus_xfer(struct ops_i2c_dev *i2c_bus,struct i2c_dev_message msgs[],unsigned long num);
