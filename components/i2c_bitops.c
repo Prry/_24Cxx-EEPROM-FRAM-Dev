@@ -7,9 +7,10 @@
  * Change Logs:
  * Date           Author       Notes
  * 2016-06-10     Acuity      first version.
- * 2017-02-20     Acuity	  add i2c_bus device.
- * 2018-10-22     Acuity	  add the speed.
+ * 2017-02-20     Acuity      add i2c_bus device.
+ * 2018-10-22     Acuity      add the speed.
  */
+
 #include "i2c_bitops.h"
 
 /********************simulate i2c start*******************/
