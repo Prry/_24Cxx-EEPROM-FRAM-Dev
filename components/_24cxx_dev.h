@@ -33,12 +33,15 @@ typedef enum
 /*24cxx eeprom devcie struct*/
 typedef struct 
 {
-	struct i2c_dev_device 	*i2c_dev;	/*i2c bus device struct*/
-	uint8_t					slave_addr;	/*eeprom i2c addr*/
-	//uint8_t				type;		/*eeprom type, 0:eeprom;1:fram*/
-	_24_model_t				model;		/*eeprom model*/
-	void(*wp)(uint8_t ctrl);			/*protect of write function*/
-	void(*page_write_delay)(void);		/*there is a delay in continuous writin for EEPROM,FRAM not need*/
+	int (*i2c_send_thend_recv)(uint8_t slave_addr, const void *send_buff, 	/* i2c bus fun */
+				uint32_t send_size, void *recv_buff, uint32_t recv_size);
+	int (*i2c_send_thend_send)(uint8_t slave_addr, const void *send_buff1,	/* i2c bus fun */
+				uint32_t send_size1,const void *send_buff2, uint32_t send_size2);
+	uint8_t	slave_addr;	/*eeprom i2c addr*/
+	//uint8_t	type;		/*eeprom type, 0:eeprom;1:fram*/
+	_24_model_t	model;		/*eeprom model*/
+	void(*wp)(uint8_t ctrl);		/*protect of write function*/
+	void(*page_write_delay)(void);	/*there is a delay in continuous writin for EEPROM,FRAM not need*/
 	
 }_24cxx_dev_t;
 
