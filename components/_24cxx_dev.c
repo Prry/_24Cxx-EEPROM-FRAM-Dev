@@ -24,7 +24,7 @@ static uint16_t get_eeprom_pagesize(_24_model_t model)
 {
 	switch(model)
 	{
-	  	case _24C01_E:
+    case _24C01_E:
 		case _24C02_E:
 		  return 8;
 		  
@@ -35,11 +35,18 @@ static uint16_t get_eeprom_pagesize(_24_model_t model)
 		  
 		case _24C32_E:
 		case _24C64_E:
+      return 32;
+        
 		case _24C128_E:
 		case _24C256_E:
+      return 64;
+
 		case _24C512_E:
+      return 128;
+
 		case _24C1024_E:
-		  return 32;
+		  return 256;
+		  
 		default:
 	      return 0;
 	}
