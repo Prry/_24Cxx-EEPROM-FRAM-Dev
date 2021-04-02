@@ -143,6 +143,69 @@ static int16_t _24cxx_write_page(_24cxx_dev_t *pdev, uint32_t addr, uint8_t *pbu
 	return ret;
 }
 
+/**
+ * @brief  read from the eeprom.
+ * @param  pdev pointer to the eeprom device struct.
+ * @param  addr the address to read from.
+ * @param  pbuf the data to write.
+ * @param  size number of bytes to read.
+ * @retval return 0 if 0k,anything else is considered an error.
+ */
+static int16_t _24cxx_write_continue(_24cxx_dev_t *pdev, uint32_t addr, uint8_t *pbuf, uint32_t size)
+{
+  	uint8_t offset = 0;
+	uint8_t write_size = 0;
+	uint8_t	buf[2];
+	uint8_t slave_addr = 0;
+	int16_t	ret = 0;
+	
+	if (pdev == 0)
+	{
+		return _24CXX_ERR_DEV_NONE;
+	}
+	
+	if (pdev->wp)		/* release write protect */
+	{
+		pdev->wp(0);
+	}
+	
+	if (pdev->model > _24C16_E)
+	{/* 24c32-24c1024 */
+		slave_addr = pdev->slave_addr;
+		buf[0] = (addr >>8)& 0xff;
+		buf[1] = addr & 0xff;
+		ret = pdev->i2c_send_thend_send(slave_addr, buf, 2, pbuf, size);
+	}
+	else
+	{/* 24c01-24c16 */
+		while (size > 0)
+		{
+			offset = 0xff - (addr % 0xff);
+			write_size = size > offset ? offset : size;
+			slave_addr = pdev->slave_addr | (addr>>8);
+			buf[0] = addr & 0xff;
+		
+			ret = pdev->i2c_send_thend_send(slave_addr, buf, 1, pbuf, write_size);
+			if (ret != _24CXX_OK)
+			{
+				break;
+			}
+			size = size - write_size;
+			if (size > 0)
+			{
+				pbuf = pbuf + write_size;
+				addr = addr + write_size;
+			}
+		}
+	}
+	
+	if (pdev->wp)
+	{
+		pdev->wp(1);	/* write protect */
+	}
+	
+	return ret;
+}
 
 /**
  * @brief  write data to eeprom.
@@ -166,23 +229,31 @@ int16_t _24cxx_write(_24cxx_dev_t *pdev, uint32_t addr, uint8_t *pbuf, uint32_t 
 	{
 		return _24CXX_ERR_CHIP_SIZE;
 	}
-	ee_page_size = get_eeprom_pagesize(pdev->model);
-	while (size > 0)
-	{
-		page_offset = ee_page_size - (addr % ee_page_size);
-		write_len   = size > page_offset ? page_offset : size;
-		error = _24cxx_write_page(pdev,addr,pbuf,write_len);	
-		if(error)
-		  	break;
-		size = size - write_len;
-		if (size > 0)
+	
+	if (0 == pdev->page_write_delay)
+	{/* FRAM */
+		_24cxx_write_continue(pdev, addr, pbuf, size);
+	}
+	else
+	{/* EEPROM */
+		ee_page_size = get_eeprom_pagesize(pdev->model);
+		while (size > 0)
 		{
-			pbuf = pbuf + write_len;
-			addr = addr + write_len;
-		}
-		if (pdev->page_write_delay)
-		{
-			pdev->page_write_delay();		/*eeprom need wait*/
+			page_offset = ee_page_size - (addr % ee_page_size);
+			write_len   = size > page_offset ? page_offset : size;
+			error = _24cxx_write_page(pdev,addr,pbuf,write_len);	
+			if(error)
+				break;
+			size = size - write_len;
+			if (size > 0)
+			{
+				pbuf = pbuf + write_len;
+				addr = addr + write_len;
+			}
+			if (pdev->page_write_delay)
+			{
+				pdev->page_write_delay();		/*eeprom need wait*/
+			}
 		}
 	}
 	return error;
