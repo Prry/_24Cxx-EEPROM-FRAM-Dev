@@ -232,7 +232,7 @@ int16_t _24cxx_write(_24cxx_dev_t *pdev, uint32_t addr, uint8_t *pbuf, uint32_t 
 	
 	if (0 == pdev->page_write_delay)
 	{/* FRAM */
-		_24cxx_write_continue(pdev, addr, pbuf, size);
+		error = _24cxx_write_continue(pdev, addr, pbuf, size);
 	}
 	else
 	{/* EEPROM */

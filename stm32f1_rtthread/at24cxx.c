@@ -42,11 +42,11 @@ static int hw_i2c_send_then_recv(rt_uint8_t slave_addr, const void *send_buff,
 
 	ee24_msg[0].addr  = slave_addr;
 	ee24_msg[0].flags = RT_I2C_WR;
-	ee24_msg[0].buf   = (uint8_t*)send_buff;
+	ee24_msg[0].buf   = (rt_uint8_t*)send_buff;
 	ee24_msg[0].len   = send_size;
 	ee24_msg[1].addr  = slave_addr;
 	ee24_msg[1].flags = RT_I2C_RD;	
-	ee24_msg[1].buf   = (uint8_t*)recv_buff;
+	ee24_msg[1].buf   = (rt_uint8_t*)recv_buff;
 	ee24_msg[1].len   = recv_size;
 
 	ret_size = rt_i2c_transfer(rt_at24c_i2c, ee24_msg, 2);
@@ -67,13 +67,13 @@ static int hw_i2c_send_then_send(rt_uint8_t slave_addr, const void *send_buff1,
 	struct rt_i2c_msg ee24_msg[2];
 	rt_uint8_t ret_size = 0;
 
-	ee24_msg[0].buf   = (uint8_t*)send_buff1;
+	ee24_msg[0].buf   = (rt_uint8_t*)send_buff1;
 	ee24_msg[0].addr  = slave_addr;
 	ee24_msg[0].flags = RT_I2C_WR;
 	ee24_msg[0].len   = send_size1;
 	ee24_msg[1].addr  = slave_addr;
 	ee24_msg[1].flags = RT_I2C_WR  | RT_I2C_NO_START;
-	ee24_msg[1].buf   = (uint8_t*)send_buff2;
+	ee24_msg[1].buf   = (rt_uint8_t*)send_buff2;
 	ee24_msg[1].len   = send_size2;
 	ret_size = rt_i2c_transfer(rt_at24c_i2c, ee24_msg, 2);
 	
@@ -113,7 +113,7 @@ static rt_err_t rt_at24cxx_open(rt_device_t dev, rt_uint16_t flag)
 static rt_size_t rt_at24cxx_read(rt_device_t dev, rt_off_t pos, void *buffer, rt_size_t size)
 {
   	_24cxx_dev_t *p = RT_NULL;
-	int16_t ret = _24CXX_OK;
+	rt_int16_t ret = _24CXX_OK;
 	
   	p = (_24cxx_dev_t*)dev->user_data;
 	
