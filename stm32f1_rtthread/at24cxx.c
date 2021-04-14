@@ -18,17 +18,14 @@
 #define DBG_LVL DBG_LOG
 #include <rtdbg.h>
 
+#define AT24CXX_EXPORT_MSH				/* 导出到RTT msh测试 */
+
 #define	AT24CXX_I2C_BUS		  "i2c1"	/* i2c linked */
 #define	AT24CXX_DEVICE_NAME	  "24cxx"	/* register device name */
 
 static struct rt_device rt_at24c_dev;	 /* at24cxx device */
 static struct rt_i2c_bus_device *rt_at24c_i2c;
 
-/**
- * @brief  delay function
- * @param  none
- * @retval none
- */
 static void page_write_delay(void) 
 {
 	uint16_t i;
@@ -37,11 +34,11 @@ static void page_write_delay(void)
 	while(i--);
 }
 
-static int hw_i2c_send_then_recv(uint8_t slave_addr, const void *send_buff, 
-							 uint32_t send_size, void *recv_buff, uint32_t recv_size)
+static int hw_i2c_send_then_recv(rt_uint8_t slave_addr, const void *send_buff, 
+							 rt_uint32_t send_size, void *recv_buff, rt_uint32_t recv_size)
 {
 	struct rt_i2c_msg ee24_msg[2];
-	uint8_t 	ret_size = 0;
+	rt_uint8_t ret_size = 0;
 
 	ee24_msg[0].addr  = slave_addr;
 	ee24_msg[0].flags = RT_I2C_WR;
@@ -64,11 +61,11 @@ static int hw_i2c_send_then_recv(uint8_t slave_addr, const void *send_buff,
 	}
 }
 
-static int hw_i2c_send_then_send(uint8_t slave_addr, const void *send_buff1,
-							 uint32_t send_size1,const void *send_buff2, uint32_t send_size2)
+static int hw_i2c_send_then_send(rt_uint8_t slave_addr, const void *send_buff1,
+							 rt_uint32_t send_size1,const void *send_buff2, rt_uint32_t send_size2)
 {
 	struct rt_i2c_msg ee24_msg[2];
-	uint8_t ret_size = 0;
+	rt_uint8_t ret_size = 0;
 
 	ee24_msg[0].buf   = (uint8_t*)send_buff1;
 	ee24_msg[0].addr  = slave_addr;
@@ -91,16 +88,16 @@ static int hw_i2c_send_then_send(uint8_t slave_addr, const void *send_buff1,
 }
 
 /**
- * @brief  device init
+ * @brief  FM24CL04 device init
  */
 const _24cxx_dev_t at24cxx_dev =
 {
 	hw_i2c_send_then_recv,
 	hw_i2c_send_then_send,
 	0x50,						/* eeprom address */
-	_24C02_E,					/* eeprom model,eg AT24C02 */
+	_24C04_E,					/* eeprom model,eg FM24CL04 */
 	RT_NULL,					/* no write protect */
-	page_write_delay,			/* delay function */
+	RT_NULL,					/* delay function,FRAM no need */
 };
 
 static rt_err_t rt_at24cxx_open(rt_device_t dev, rt_uint16_t flag)
@@ -123,7 +120,7 @@ static rt_size_t rt_at24cxx_read(rt_device_t dev, rt_off_t pos, void *buffer, rt
   	ret = _24cxx_read(p, pos, buffer, size); 
 	if (_24CXX_OK == ret)
 	{
-	  	return RT_EOK;
+	  	return size;
 	}
 	else
 	{
@@ -134,14 +131,14 @@ static rt_size_t rt_at24cxx_read(rt_device_t dev, rt_off_t pos, void *buffer, rt
 static rt_size_t rt_at24cxx_write(rt_device_t dev, rt_off_t pos, const void *buffer, rt_size_t size)
 {
     _24cxx_dev_t *p = RT_NULL;
-	int16_t ret = _24CXX_OK;
+	rt_int16_t ret = _24CXX_OK;
 	
   	p = (_24cxx_dev_t*)dev->user_data;
 	
-  	ret = _24cxx_write(p, pos, (uint8_t*)buffer, size); 
+  	ret = _24cxx_write(p, pos, (rt_uint8_t*)buffer, size); 
 	if (_24CXX_OK == ret)
 	{
-	  	return RT_EOK;
+	  	return size;
 	}
 	else
 	{
@@ -175,3 +172,188 @@ int rt_hw_at24cxx_init(void)
 }
 INIT_DEVICE_EXPORT(rt_hw_at24cxx_init);
 
+
+/* 导出到msh shell */
+#ifdef AT24CXX_EXPORT_MSH
+
+static int read_from_eeprom(rt_device_t pdev, int addr, int size)
+{
+  	rt_uint8_t *pbuf = RT_NULL;
+	rt_size_t ret_size = 0;
+	rt_uint16_t index = 0;
+	
+	pbuf = (rt_uint8_t*)rt_malloc(512);
+	
+	if (RT_NULL == pbuf)
+	{
+		LOG_E("malloc memory falied\n");
+		
+		return -1;
+	}
+	ret_size = rt_device_read(pdev, addr, pbuf, 512);
+	
+	if (ret_size != 512)
+	{
+		LOG_E("read 24cxx failed\n");
+		goto __exit;
+	}
+	
+	for (index=0; index<size; index++, addr++)
+	{
+		if ((index % 16) == 0) 
+		{
+		  	rt_kprintf("\n %.4x|  ", addr);
+		}
+		else if((index % 8) == 0 ) 
+		{
+		  	rt_kprintf("  ");
+		}
+		rt_kprintf("%.2x ", *(pbuf+index));
+	}
+	rt_kprintf("\n\n");
+__exit:	
+	rt_free(pbuf);
+	
+	return 0;
+}
+
+static int write_to_eeprom(rt_device_t pdev, int addr)
+{
+  	rt_uint8_t *pbuf = RT_NULL;
+	rt_uint16_t index = 0;
+	rt_size_t ret_size = 0;
+	
+	pbuf = (rt_uint8_t*)rt_malloc(512);
+	
+	if (RT_NULL == pbuf)
+	{
+		LOG_E("malloc memory falied\n");
+	}
+	
+	for(index=0; index<512; index++)
+	{/* fill data */
+		*(pbuf+index) = index&0xff;
+	}
+	
+	ret_size = rt_device_write(pdev, addr, pbuf, 512);
+	
+	if (ret_size != 512)
+	{
+		LOG_E("write 24cxx failed\n");
+		goto __exit;
+	}
+	
+	for (index=0, addr=0; index<512; index++, addr++)
+	{
+		if ((index % 16) == 0) 
+		{
+		  	rt_kprintf("\n %.4x|  ", addr);
+		}
+		else if ((index % 8) == 0) 
+		{
+		  	rt_kprintf("  ");
+		}
+		rt_kprintf("%.2x ", *(pbuf+index));
+	}
+	rt_kprintf("\n\n");
+__exit:
+	rt_free(pbuf);
+	
+	return 0;
+}
+
+static int erase_to_eeprom(rt_device_t pdev, int addr)
+{
+  	rt_uint8_t *pbuf = RT_NULL;
+	rt_size_t ret_size = 0;
+	
+	pbuf = (rt_uint8_t*)rt_malloc(512);
+	
+	if (RT_NULL == pbuf)
+	{
+		LOG_E("malloc memory falied\n");
+	}
+	
+	rt_memset(pbuf, 0, 512);
+	
+	ret_size = rt_device_write(pdev, addr, pbuf, 512);
+	
+	if (ret_size != 512)
+	{
+		LOG_E("erase 24cxx failed\n");
+	}
+	else
+	{
+		LOG_D("erase eeprom succeed\n");
+	}
+	
+	
+	rt_free(pbuf);
+	
+	return 0;
+}
+
+int _24cxx_wr(int argc, char **argv)
+{
+  	rt_err_t ret = RT_EOK;
+	rt_device_t pdev = RT_NULL;
+  	int op = 0;
+	
+	if (argc < 3)
+	{
+		goto __usage;
+	}
+	
+	op = argv[2][0];
+	pdev = rt_device_find(argv[1]);
+	
+	if (RT_NULL == pdev)
+	{
+	  	LOG_E("\'%s\' device not found\n", argv[1]);
+		return -1;
+	}
+	ret = rt_device_open(pdev, RT_DEVICE_OFLAG_RDWR);
+	
+	if (RT_EOK != ret)
+	{
+		LOG_E("\'%s\' device open failed\n", argv[1]);
+	  	goto __exit;
+	}
+	switch(op)
+	{
+	case 'r':
+		rt_kprintf("  reading 512 bytes from 24cxx\n");
+		read_from_eeprom(pdev, 0, 512);
+		break;
+		
+	case 'w':
+		rt_kprintf("  writing 0x00-0xff into 24cxx\n");
+		write_to_eeprom(pdev, 0);
+		break;
+		
+	case 'e':
+		rt_kprintf("  erase 0x00 into 24Cxx\n");
+		erase_to_eeprom(pdev, 0);
+		break;
+		
+	default:
+	  	rt_device_close(pdev);
+	  	goto __usage;
+		break;
+	}
+__exit:
+	rt_device_close(pdev);
+	
+	return 0;
+	
+__usage:
+  	rt_kprintf("usage:\n");
+	rt_kprintf("_24cxx_wr [eeprom dev] r     - read 24cxx \n");
+	rt_kprintf("_24cxx_wr [eeprom dev] w     - write 24cxx \n");
+	rt_kprintf("_24cxx_wr [eeprom dev] e     - erase 24cxx \n");
+	
+	return -1;
+}
+MSH_CMD_EXPORT(_24cxx_wr, _24cxx read/write program);
+
+#endif
